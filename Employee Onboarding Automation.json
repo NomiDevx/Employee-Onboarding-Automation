@@ -1,0 +1,960 @@
+{
+  "name": "Employee Onboarding Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "form": "261252172806049"
+      },
+      "id": "ca021085-e045-42bf-a23f-fe3109adb7cc",
+      "name": "Jotform New Hire Submission",
+      "type": "n8n-nodes-base.jotFormTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        496
+      ],
+      "webhookId": "37590d8f-a4e0-4fcd-9d7e-e244c2c500b0",
+      "credentials": {
+        "jotFormApi": {
+          "id": "lVpupVTP80ZzDMCy",
+          "name": "JotForm account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this new hire profile and return JSON with: priority (standard/high/executive based on seniority), department (normalized to: Engineering, Marketing, Sales, Finance, HR, Operations), it_requirements (laptop_type, software_list array, access_levels array), onboarding_goals (30_day, 60_day, 90_day milestones), buddy_suggestion (department-based peer).\n\nNew Hire Data:\nName: {{ $json.full_name }}\nPosition: {{ $json.position }}\nDepartment: {{ $json.department }}\nExperience Level: {{ $json.experience_level }}\nLaptop Preference: {{ $json.laptop_preference }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an HR onboarding specialist. Analyze new hire profiles and provide structured onboarding recommendations. Use exact department names: Engineering, Marketing, Sales, Finance, HR, Operations. Priority levels: standard (junior/mid), high (senior/lead), executive (director/VP/C-level)."
+        }
+      },
+      "id": "fb8d0aa4-9e7b-4f15-aa61-fd71b6a85170",
+      "name": "AI Role Analysis",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        464,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "0ac6ffea-305a-4d72-a3b8-a1e448cdc77b",
+      "name": "OpenAI Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        720
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": {
+          "priority": "standard",
+          "department": "Engineering",
+          "it_requirements": {
+            "laptop_type": "MacBook Pro",
+            "software_list": [
+              "Slack",
+              "GitHub",
+              "VS Code"
+            ],
+            "access_levels": [
+              "GitHub Org",
+              "Slack Workspace"
+            ]
+          },
+          "onboarding_goals": {
+            "30_day": "Complete onboarding, setup dev environment",
+            "60_day": "First feature shipped",
+            "90_day": "Full team integration"
+          },
+          "buddy_suggestion": "Jane Doe from Engineering"
+        }
+      },
+      "id": "ec8b03ce-aabb-4dec-b310-c575f6e61e71",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "executive",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "Executive (4-hour SLA)"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "high",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "High Priority (24-hour SLA)"
+            },
+            {
+              "conditions": {
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.priority }}",
+                    "rightValue": "standard",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                }
+              },
+              "renameOutput": true,
+              "outputKey": "Standard (72-hour SLA)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc6f8e84-0950-4f71-9e29-ed107c8e4fb6",
+      "name": "Route by Priority",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "value": "10000",
+          "mode": "list",
+          "cachedResultName": "My Software Team"
+        },
+        "issueType": {
+          "__rl": true,
+          "value": "10003",
+          "mode": "list",
+          "cachedResultName": "Task"
+        },
+        "summary": "=Onboarding setup for {{ $(\"Jotform New Hire Submission\").item.json.full_name }} - {{ $(\"Jotform New Hire Submission\").item.json.position }}",
+        "additionalFields": {
+          "description": "=New Hire Onboarding IT Setup\n\nEmployee: {{ $(\"Jotform New Hire Submission\").item.json.full_name }}\nPosition: {{ $(\"Jotform New Hire Submission\").item.json.position }}\nDepartment: {{ $json.department }}\nStart Date: {{ $(\"Jotform New Hire Submission\").item.json.start_date }}\n\nLaptop: {{ $json.it_requirements.laptop_type }}\n\nSoftware Required:\n{{ $json.it_requirements.software_list.join(\"\\n- \") }}\n\nAccess Levels:\n{{ $json.it_requirements.access_levels.join(\"\\n- \") }}\n\nSLA: {{ $json.priority === \"executive\" ? \"4 hours\" : $json.priority === \"high\" ? \"24 hours\" : \"72 hours\" }}",
+          "priority": {
+            "__rl": true,
+            "mode": "list",
+            "value": "={{ $json.priority === \"executive\" ? \"Highest\" : $json.priority === \"high\" ? \"High\" : \"Medium\" }}"
+          }
+        }
+      },
+      "id": "0239bbca-4550-4752-8423-64ea7e154148",
+      "name": "Create IT Jira Ticket",
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        304
+      ],
+      "credentials": {
+        "jiraSoftwareCloudApi": {
+          "id": "pt6wpoqFgfM8t3pz",
+          "name": "Jira SW Cloud account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "it-onboarding"
+        },
+        "text": "=🆕 New Hire IT Setup Required\n\n*Employee:* {{ $(\"Jotform New Hire Submission\").item.json.full_name }}\n*Position:* {{ $(\"Jotform New Hire Submission\").item.json.position }}\n*Start Date:* {{ $(\"Jotform New Hire Submission\").item.json.start_date }}\n*Priority:* {{ $(\"AI Role Analysis\").item.json.priority.toUpperCase() }}\n*SLA:* {{ $(\"AI Role Analysis\").item.json.priority === \"executive\" ? \"4 hours\" : $(\"AI Role Analysis\").item.json.priority === \"high\" ? \"24 hours\" : \"72 hours\" }}\n\n*Jira Ticket:* {{ $json.key }} - <{{ $json.self }}|View Ticket>\n\n*Laptop:* {{ $(\"AI Role Analysis\").item.json.it_requirements.laptop_type }}",
+        "otherOptions": {}
+      },
+      "id": "ceb5fca1-5f6c-4b36-9b22-908dd0f22818",
+      "name": "Notify IT Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1264,
+        304
+      ],
+      "webhookId": "cbb6fbf5-58bb-428a-9ffb-a4605f059b4e",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "0XK2cSm6tSKRn3lF",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/admin.users.invite",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"email\": $(\"Jotform New Hire Submission\").item.json.email, \"team_id\": \"YOUR_TEAM_ID\", \"channel_ids\": \"general,engineering\", \"real_name\": $(\"Jotform New Hire Submission\").item.json.full_name } }}",
+        "options": {}
+      },
+      "id": "85d4b5f7-a8fc-4c16-8c79-9f5b0956c6d6",
+      "name": "Create Slack Account (TODO)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1488,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/orgs/YOUR_ORG/memberships/{{ $(\"Jotform New Hire Submission\").item.json.email.split(\"@\")[0] }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"role\": \"member\" } }}",
+        "options": {}
+      },
+      "id": "3fd28360-b970-434b-9e09-e69e28e31d88",
+      "name": "Add to GitHub Org (TODO)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1712,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://admin.googleapis.com/admin/directory/v1/users",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"primaryEmail\": $(\"Jotform New Hire Submission\").item.json.full_name.toLowerCase().replace(\" \", \".\") + \"@company.com\", \"name\": { \"givenName\": $(\"Jotform New Hire Submission\").item.json.full_name.split(\" \")[0], \"familyName\": $(\"Jotform New Hire Submission\").item.json.full_name.split(\" \").slice(1).join(\" \") }, \"password\": \"TempPassword123!\" } }}",
+        "options": {}
+      },
+      "id": "13eb10ab-1e29-459f-a0f5-95d21077f393",
+      "name": "Create Google Workspace Email (TODO)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1936,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "id": "38b33cfe-4f92-45dc-9e8a-0c184c2b0276",
+      "name": "Merge All Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2160,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "hr@company.com",
+        "subject": "=New hire onboarding initiated: {{ $(\"Jotform New Hire Submission\").item.json.full_name }}",
+        "message": "=<h2>New Hire Onboarding Initiated</h2>\n\n<p><strong>Employee:</strong> {{ $(\"Jotform New Hire Submission\").item.json.full_name }}</p>\n<p><strong>Email:</strong> {{ $(\"Jotform New Hire Submission\").item.json.email }}</p>\n<p><strong>Position:</strong> {{ $(\"Jotform New Hire Submission\").item.json.position }}</p>\n<p><strong>Department:</strong> {{ $(\"AI Role Analysis\").item.json.department }}</p>\n<p><strong>Start Date:</strong> {{ $(\"Jotform New Hire Submission\").item.json.start_date }}</p>\n<p><strong>Manager:</strong> {{ $(\"Jotform New Hire Submission\").item.json.manager_email }}</p>\n<p><strong>Office Location:</strong> {{ $(\"Jotform New Hire Submission\").item.json.office_location }}</p>\n<p><strong>Priority Level:</strong> {{ $(\"AI Role Analysis\").item.json.priority.toUpperCase() }}</p>\n\n<h3>Onboarding Checklist</h3>\n<ul>\n<li>IT Setup: Jira ticket created</li>\n<li>Accounts: Slack, GitHub, Google Workspace</li>\n<li>Orientation scheduled</li>\n<li>Manager notified</li>\n<li>Buddy assigned: {{ $(\"AI Role Analysis\").item.json.buddy_suggestion }}</li>\n</ul>",
+        "options": {}
+      },
+      "id": "8bbc9ea4-d45c-4ad5-955f-778515a0847c",
+      "name": "Email HR Team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1712,
+        112
+      ],
+      "webhookId": "945aa12b-768e-42f8-9993-aef18c90d4a0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BgrxHCONBXgB1fif",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "xnomi05@gmail.com",
+          "mode": "list",
+          "cachedResultName": "xnomi05@gmail.com"
+        },
+        "start": "={{ $(\"Jotform New Hire Submission\").item.json.start_date }}T09:00:00",
+        "end": "={{ $(\"Jotform New Hire Submission\").item.json.start_date }}T12:00:00",
+        "additionalFields": {
+          "attendees": "={{ $(\"Jotform New Hire Submission\").item.json.email }},{{ $(\"Jotform New Hire Submission\").item.json.manager_email }},hr@company.com",
+          "description": "=Welcome orientation for {{ $(\"Jotform New Hire Submission\").item.json.full_name }}\n\nPosition: {{ $(\"Jotform New Hire Submission\").item.json.position }}\nDepartment: {{ $(\"AI Role Analysis\").item.json.department }}\nManager: {{ $(\"Jotform New Hire Submission\").item.json.manager_email }}\nBuddy: {{ $(\"AI Role Analysis\").item.json.buddy_suggestion }}",
+          "location": "={{ $(\"Jotform New Hire Submission\").item.json.office_location === \"remote\" ? \"Video Conference\" : $(\"Jotform New Hire Submission\").item.json.office_location + \" Office - Conference Room A\" }}",
+          "summary": "=New Hire Orientation - {{ $(\"Jotform New Hire Submission\").item.json.full_name }}"
+        }
+      },
+      "id": "54207898-1dce-4935-a91d-49400674aa19",
+      "name": "Create Orientation Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1936,
+        112
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "0gMqUxoGtrk0DJz1",
+          "name": "Google Calendar OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Jotform New Hire Submission\").item.json.manager_email }}",
+        "subject": "=Your new team member starts {{ $(\"Jotform New Hire Submission\").item.json.start_date }}: {{ $(\"Jotform New Hire Submission\").item.json.full_name }}",
+        "message": "=<h2>New Team Member Starting Soon</h2>\n\n<p>Hi,</p>\n\n<p>Your new team member <strong>{{ $(\"Jotform New Hire Submission\").item.json.full_name }}</strong> will be joining the {{ $(\"AI Role Analysis\").item.json.department }} team on <strong>{{ $(\"Jotform New Hire Submission\").item.json.start_date }}</strong>.</p>\n\n<h3>Role Details</h3>\n<p><strong>Position:</strong> {{ $(\"Jotform New Hire Submission\").item.json.position }}</p>\n<p><strong>Experience Level:</strong> {{ $(\"Jotform New Hire Submission\").item.json.experience_level }}</p>\n<p><strong>Office Location:</strong> {{ $(\"Jotform New Hire Submission\").item.json.office_location }}</p>\n\n<h3>Onboarding Goals</h3>\n<p><strong>30 Days:</strong> {{ $(\"AI Role Analysis\").item.json.onboarding_goals[\"30_day\"] }}</p>\n<p><strong>60 Days:</strong> {{ $(\"AI Role Analysis\").item.json.onboarding_goals[\"60_day\"] }}</p>\n<p><strong>90 Days:</strong> {{ $(\"AI Role Analysis\").item.json.onboarding_goals[\"90_day\"] }}</p>\n\n<h3>Suggested First Week Tasks</h3>\n<ul>\n<li>Welcome meeting and team introduction</li>\n<li>Review role responsibilities and expectations</li>\n<li>Setup 1-on-1 schedule</li>\n<li>Assign initial project or task</li>\n<li>Introduce to assigned buddy: {{ $(\"AI Role Analysis\").item.json.buddy_suggestion }}</li>\n</ul>\n\n<p>A Notion onboarding page will be created with detailed resources.</p>",
+        "options": {}
+      },
+      "id": "c61a1a94-e3f6-4f50-bef5-5b2ea67ed4c0",
+      "name": "Email Manager",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1712,
+        496
+      ],
+      "webhookId": "45c26e47-41e5-4b21-a2da-f96f00b8517f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BgrxHCONBXgB1fif",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "title": "={{ $(\"Jotform New Hire Submission\").item.json.full_name }} - Onboarding Plan",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "type": "select"
+            },
+            {
+              "type": "date",
+              "includeTime": false,
+              "date": "={{ $(\"Jotform New Hire Submission\").item.json.start_date }}"
+            },
+            {
+              "type": "email",
+              "emailValue": "={{ $(\"Jotform New Hire Submission\").item.json.manager_email }}"
+            },
+            {
+              "type": "status"
+            }
+          ]
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "Welcome to the Team!"
+            },
+            {
+              "textContent": "=This page contains all resources for {{ $(\"Jotform New Hire Submission\").item.json.full_name }} onboarding."
+            },
+            {
+              "textContent": "Quick Links"
+            },
+            {
+              "textContent": "Company Handbook: [Link to handbook]"
+            },
+            {
+              "textContent": "Team Wiki: [Link to wiki]"
+            },
+            {
+              "textContent": "Project Documentation: [Link to docs]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1123c106-c5ee-4063-a644-ddce77ecc1ef",
+      "name": "Create Notion Onboarding Page",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1936,
+        496
+      ],
+      "credentials": {
+        "notionOAuth2Api": {
+          "id": "HJS6ECDoSwl5Twho",
+          "name": "Notion OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "finance"
+        },
+        "text": "=💰 New Employee Payroll Setup Required\n\n*Employee:* {{ $(\"Jotform New Hire Submission\").item.json.full_name }}\n*Position:* {{ $(\"Jotform New Hire Submission\").item.json.position }}\n*Department:* {{ $(\"AI Role Analysis\").item.json.department }}\n*Start Date:* {{ $(\"Jotform New Hire Submission\").item.json.start_date }}\n\nPlease add to payroll system.",
+        "otherOptions": {}
+      },
+      "id": "240ae9fa-d34e-420a-856c-ed19ea933a0c",
+      "name": "Notify Finance Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1936,
+        688
+      ],
+      "webhookId": "c801a212-1a93-43f8-b21e-68286e7f5280",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "0XK2cSm6tSKRn3lF",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $(\"Jotform New Hire Submission\").item.json.office_location }}",
+              "rightValue": "remote",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          }
+        },
+        "options": {}
+      },
+      "id": "49a95dff-b159-416b-981e-0b9b48795698",
+      "name": "Check Office Location",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1712,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "facilities"
+        },
+        "text": "=🏢 Office Desk Setup Required\n\n*Employee:* {{ $(\"Jotform New Hire Submission\").item.json.full_name }}\n*Office Location:* {{ $(\"Jotform New Hire Submission\").item.json.office_location }}\n*Start Date:* {{ $(\"Jotform New Hire Submission\").item.json.start_date }}\n*Laptop:* {{ $(\"AI Role Analysis\").item.json.it_requirements.laptop_type }}\n\nPlease prepare desk and equipment.",
+        "otherOptions": {}
+      },
+      "id": "9862a53e-d40b-4370-af6a-511be357f703",
+      "name": "Notify Facilities - Office Setup",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1936,
+        880
+      ],
+      "webhookId": "85380166-c007-4310-b7f9-d77b34bfa853",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "0XK2cSm6tSKRn3lF",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "facilities"
+        },
+        "text": "=📦 Remote Equipment Shipping Required\n\n*Employee:* {{ $(\"Jotform New Hire Submission\").item.json.full_name }}\n*Location:* Remote\n*Start Date:* {{ $(\"Jotform New Hire Submission\").item.json.start_date }}\n*Laptop:* {{ $(\"AI Role Analysis\").item.json.it_requirements.laptop_type }}\n\nPlease ship laptop and welcome kit. Address to be collected by HR.",
+        "otherOptions": {}
+      },
+      "id": "9348c6c9-68c3-4579-be5c-ae93a68611f5",
+      "name": "Notify Facilities - Ship Equipment",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1936,
+        1072
+      ],
+      "webhookId": "6b0ab9ee-962b-459e-8164-c42d44f18861",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "0XK2cSm6tSKRn3lF",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Jotform New Hire Submission\").item.json.email }}",
+        "subject": "=Welcome to the team, {{ $(\"Jotform New Hire Submission\").item.json.full_name }}!",
+        "message": "=<h1>Welcome to the Team!</h1>\n\n<p>Dear {{ $(\"Jotform New Hire Submission\").item.json.full_name }},</p>\n\n<p>We are thrilled to have you joining us as <strong>{{ $(\"Jotform New Hire Submission\").item.json.position }}</strong> in the {{ $(\"AI Role Analysis\").item.json.department }} department!</p>\n\n<h2>Your Start Date</h2>\n<p>Your first day is <strong>{{ $(\"Jotform New Hire Submission\").item.json.start_date }}</strong> at 9:00 AM.</p>\n\n<h2>First Day Instructions</h2>\n<ul>\n<li>Location: {{ $(\"Jotform New Hire Submission\").item.json.office_location === \"remote\" ? \"You will receive a video conference link\" : $(\"Jotform New Hire Submission\").item.json.office_location + \" Office - Check in at reception\" }}</li>\n<li>Your orientation is scheduled from 9:00 AM - 12:00 PM</li>\n<li>Your manager {{ $(\"Jotform New Hire Submission\").item.json.manager_email }} will meet you</li>\n<li>Your onboarding buddy is {{ $(\"AI Role Analysis\").item.json.buddy_suggestion }}</li>\n</ul>\n\n<h2>IT Setup Status</h2>\n<p>Our IT team is preparing:</p>\n<ul>\n<li>{{ $(\"AI Role Analysis\").item.json.it_requirements.laptop_type }}</li>\n<li>Accounts: Slack, GitHub, Google Workspace</li>\n<li>Software: {{ $(\"AI Role Analysis\").item.json.it_requirements.software_list.join(\", \") }}</li>\n</ul>\n\n<h2>Resources</h2>\n<p>Your personalized onboarding page: {{ $(\"Create Notion Onboarding Page\").item.json.url }}</p>\n\n<p>Looking forward to seeing you soon!</p>\n\n<p>Best regards,<br>The HR Team</p>",
+        "options": {}
+      },
+      "id": "f61949b5-957b-4f42-8ac0-0321dc3f13e6",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2384,
+        592
+      ],
+      "webhookId": "0da974c2-a4d6-40b1-ac2e-c02df521bead",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "BgrxHCONBXgB1fif",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "id": "33e20c17-06cd-469a-84f4-a5b80efbbd2d",
+      "name": "Track in Onboarding Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2608,
+        592
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "r80OdDO0DKE6gzoA",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "hr-alerts"
+        },
+        "text": "=🚨 Onboarding Workflow Completed\n\n*Employee:* {{ $(\"Jotform New Hire Submission\").item.json.full_name }}\n*Status:* All tasks initiated successfully\n*Jira Ticket:* {{ $(\"Create IT Jira Ticket\").item.json.key }}\n*Notion Page:* {{ $(\"Create Notion Onboarding Page\").item.json.url }}\n\nMonitor progress in the Onboarding Tracker sheet.",
+        "otherOptions": {}
+      },
+      "id": "70ad1834-5a03-438c-a1cc-14c240bc1e48",
+      "name": "Notify HR Alerts",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        2832,
+        592
+      ],
+      "webhookId": "6c3f5e0b-4b95-4239-8b50-7abc1e067901",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "0XK2cSm6tSKRn3lF",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Jotform New Hire Submission": {
+      "main": [
+        [
+          {
+            "node": "AI Role Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Role Analysis": {
+      "main": [
+        [
+          {
+            "node": "Route by Priority",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email HR Team",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email Manager",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Finance Team",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Office Location",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Role Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Role Analysis",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Priority": {
+      "main": [
+        [
+          {
+            "node": "Create IT Jira Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create IT Jira Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create IT Jira Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create IT Jira Ticket": {
+      "main": [
+        [
+          {
+            "node": "Notify IT Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify IT Team": {
+      "main": [
+        [
+          {
+            "node": "Create Slack Account (TODO)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Slack Account (TODO)": {
+      "main": [
+        [
+          {
+            "node": "Add to GitHub Org (TODO)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to GitHub Org (TODO)": {
+      "main": [
+        [
+          {
+            "node": "Create Google Workspace Email (TODO)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Workspace Email (TODO)": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Branches": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email HR Team": {
+      "main": [
+        [
+          {
+            "node": "Create Orientation Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Orientation Event": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Email Manager": {
+      "main": [
+        [
+          {
+            "node": "Create Notion Onboarding Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Notion Onboarding Page": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Notify Finance Team": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Check Office Location": {
+      "main": [
+        [
+          {
+            "node": "Notify Facilities - Office Setup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Facilities - Ship Equipment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Facilities - Office Setup": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Notify Facilities - Ship Equipment": {
+      "main": [
+        [
+          {
+            "node": "Merge All Branches",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Track in Onboarding Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track in Onboarding Sheet": {
+      "main": [
+        [
+          {
+            "node": "Notify HR Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "363189c0-39ed-45f9-ad6b-de2418dbe1c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5e7a8ca6c91c5e3424513d22fad671cffb250642967db7c68bf4a47c0a1f9ccd"
+  },
+  "id": "XVadqn0H39fP8FGx",
+  "tags": []
+}
